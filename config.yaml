@@ -1,0 +1,249 @@
+# Clash 配置文件 - 基于你的现有规则
+# 方案1：节点订阅分离（保留你所有的规则）
+# 更新日期: 2026-02-15
+
+# ========== 基础配置 ==========
+port: 0
+socks-port: 0
+redir-port: 0
+tproxy-port: 0
+mixed-port: 10752
+allow-lan: false
+bind-address: "*"
+mode: rule
+log-level: info
+ipv6: false
+unified-delay: true
+tcp-concurrent: true
+find-process-mode: always
+global-ua: "FlClash/v0.8.92 clash-verge Platform/android"
+keep-alive-interval: 30
+
+# ========== DNS 配置 ==========
+dns:
+  enable: true
+  prefer-h3: true
+  ipv6: false
+  use-hosts: true
+  use-system-hosts: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - "*.lan"
+    - "*.local"
+    - "*.localhost"
+    - "+.srv.nintendo.net"
+    - "+.stun.playstation.net"
+    - "+.msftconnecttest.com"
+    - "+.msftncsi.com"
+    - "+.xboxlive.com"
+    - "+.qq.com"
+    - "+.bilibili.com"
+    - "*.y.qq.com"
+    - "*.music.tc.qq.com"
+    - "localhost.ptlogin2.qq.com"
+    - "localhost.sec.qq.com"
+    - "+.battlenet.com.cn"
+    - "+.wotgame.cn"
+    - "+.servicewechat.com"
+  nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  fallback:
+    - https://1.1.1.1/dns-query
+    - https://dns.google/dns-query
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+
+# ========== 代理提供者（机场订阅）==========
+# 👇 在 FlClash 中编辑配置，填入你的机场订阅链接
+proxy-providers:
+  Airport:
+    type: http
+    url: ""  # 👈 在 FlClash 中填入你的机场订阅链接
+    interval: 86400
+    path: ./providers/airport.yaml
+    health-check:
+      enable: true
+      interval: 300
+      url: http://www.gstatic.com/generate_204
+
+# ========== 策略组 ==========
+proxy-groups:
+  # 主选择组
+  - name: "🚀 节点选择"
+    type: select
+    use:
+      - Airport
+    proxies:
+      - ♻️ 自动优选
+      - 🇭🇰 香港节点
+      - 🇸🇬 新加坡节点
+      - 🇯🇵 日本节点
+      - DIRECT
+
+  # 自动优选（使用新加坡节点）
+  - name: "♻️ 自动优选"
+    type: url-test
+    use:
+      - Airport
+    filter: "(?i)新加坡|坡|狮城|sg|singapore|🇸🇬"
+    url: http://www.gstatic.com/generate_204
+    interval: 600
+    tolerance: 50
+
+  # 香港节点组
+  - name: "🇭🇰 香港节点"
+    type: select
+    use:
+      - Airport
+    filter: "(?i)港|hk|hongkong|hong kong|🇭🇰"
+
+  # 新加坡节点组
+  - name: "🇸🇬 新加坡节点"
+    type: select
+    use:
+      - Airport
+    filter: "(?i)新加坡|坡|狮城|sg|singapore|🇸🇬"
+
+  # 日本节点组
+  - name: "🇯🇵 日本节点"
+    type: select
+    use:
+      - Airport
+    filter: "(?i)日本|jp|japan|东京|🇯🇵"
+
+  # 漏网之鱼
+  - name: "🐟 漏网之鱼"
+    type: select
+    proxies:
+      - 🚀 节点选择
+      - DIRECT
+
+# ========== GeoX 数据源 ==========
+geox-url:
+  mmdb: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
+  asn: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb"
+  geoip: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat"
+  geosite: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
+
+# ========== 流量嗅探 ==========
+sniffer:
+  enable: true
+  override-destination: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  sniff:
+    TLS:
+      ports:
+        - 443
+        - 8443
+    QUIC:
+      ports:
+        - 443
+
+# ========== 分流规则（你的现有规则）==========
+rules:
+  # 本地网络直连
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+
+  # 应用分流
+  - PROCESS-NAME,io.legado.app.release,🚀 节点选择
+  - PROCESS-NAME,com.vivo.email,🚀 节点选择
+  - PROCESS-NAME,org.mewx.wenku8,🚀 节点选择
+  - PROCESS-NAME,com.lcsd.urbtix.maoyan,🚀 节点选择
+  - PROCESS-NAME,com.rajarsheechatterjee.LNReader,🚀 节点选择
+
+  # AI 服务
+  - DOMAIN-SUFFIX,openai.com,🚀 节点选择
+  - DOMAIN-SUFFIX,chatgpt.com,🚀 节点选择
+  - DOMAIN-SUFFIX,oaistatic.com,🚀 节点选择
+  - DOMAIN-SUFFIX,oaiusercontent.com,🚀 节点选择
+  - DOMAIN-SUFFIX,anthropic.com,🚀 节点选择
+  - DOMAIN-SUFFIX,claude.ai,🚀 节点选择
+  - DOMAIN-KEYWORD,gemini,🚀 节点选择
+  - DOMAIN-SUFFIX,deepmind.com,🚀 节点选择
+
+  # Telegram
+  - DOMAIN-SUFFIX,t.me,🚀 节点选择
+  - DOMAIN-SUFFIX,telegram.org,🚀 节点选择
+  - DOMAIN-SUFFIX,telegram.me,🚀 节点选择
+  - DOMAIN-SUFFIX,telegra.ph,🚀 节点选择
+  - DOMAIN-SUFFIX,telesco.pe,🚀 节点选择
+  - IP-CIDR,91.108.4.0/22,🚀 节点选择,no-resolve
+  - IP-CIDR,91.108.8.0/22,🚀 节点选择,no-resolve
+  - IP-CIDR,91.108.12.0/22,🚀 节点选择,no-resolve
+  - IP-CIDR,91.108.16.0/22,🚀 节点选择,no-resolve
+  - IP-CIDR,91.108.56.0/22,🚀 节点选择,no-resolve
+  - IP-CIDR,149.154.160.0/20,🚀 节点选择,no-resolve
+  - IP-CIDR6,2001:b28:f23d::/48,🚀 节点选择,no-resolve
+  - IP-CIDR6,2001:67c:4e8::/48,🚀 节点选择,no-resolve
+
+  # YouTube
+  - DOMAIN-KEYWORD,youtube,🚀 节点选择
+  - DOMAIN-SUFFIX,googlevideo.com,🚀 节点选择
+  - DOMAIN-SUFFIX,ytimg.com,🚀 节点选择
+
+  # Netflix
+  - DOMAIN-SUFFIX,netflix.com,🚀 节点选择
+  - DOMAIN-SUFFIX,nflxvideo.net,🚀 节点选择
+  - DOMAIN-SUFFIX,nflximg.net,🚀 节点选择
+  - DOMAIN-SUFFIX,nflxext.com,🚀 节点选择
+
+  # Spotify
+  - DOMAIN-SUFFIX,spotify.com,🚀 节点选择
+  - DOMAIN-SUFFIX,scdn.co,🚀 节点选择
+
+  # Twitch
+  - DOMAIN-SUFFIX,twitch.tv,🚀 节点选择
+  - DOMAIN-SUFFIX,ttvnw.net,🚀 节点选择
+
+  # GitHub
+  - DOMAIN-KEYWORD,github,🚀 节点选择
+  - DOMAIN-SUFFIX,github.com,🚀 节点选择
+  - DOMAIN-SUFFIX,githubusercontent.com,🚀 节点选择
+  - DOMAIN-SUFFIX,github.io,🚀 节点选择
+  - DOMAIN-SUFFIX,githubassets.com,🚀 节点选择
+
+  # 开发工具
+  - DOMAIN-SUFFIX,platformio.org,🚀 节点选择
+  - DOMAIN-SUFFIX,espressif.com,🚀 节点选择
+  - DOMAIN-SUFFIX,arduino.cc,🚀 节点选择
+  - DOMAIN-SUFFIX,pypi.org,🚀 节点选择
+  - DOMAIN-SUFFIX,npmjs.com,🚀 节点选择
+  - DOMAIN-SUFFIX,npmjs.org,🚀 节点选择
+  - DOMAIN-SUFFIX,stackoverflow.com,🚀 节点选择
+
+  # Steam
+  - DOMAIN-KEYWORD,steam,🚀 节点选择
+  - DOMAIN-SUFFIX,steampowered.com,🚀 节点选择
+  - DOMAIN-SUFFIX,steamcommunity.com,🚀 节点选择
+  - DOMAIN-SUFFIX,steamstatic.com,🚀 节点选择
+
+  # Apple
+  - DOMAIN-SUFFIX,apple.com,🚀 节点选择
+  - DOMAIN-SUFFIX,icloud.com,🚀 节点选择
+  - DOMAIN-SUFFIX,apple-cloudkit.com,🚀 节点选择
+  - DOMAIN-SUFFIX,appsto.re,🚀 节点选择
+
+  # Microsoft
+  - DOMAIN-KEYWORD,microsoft,🚀 节点选择
+  - DOMAIN-SUFFIX,microsoft.com,🚀 节点选择
+  - DOMAIN-SUFFIX,windows.com,🚀 节点选择
+  - DOMAIN-SUFFIX,office.com,🚀 节点选择
+  - DOMAIN-SUFFIX,live.com,🚀 节点选择
+
+  # 国内直连
+  - GEOIP,CN,DIRECT
+
+  # 最终规则
+  - MATCH,🐟 漏网之鱼
